@@ -1,0 +1,289 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ═══════════════════════════════════════════════════════════════
+ * FLUX DESIGN SYSTEM - SYSTEM THEME DETECTION
+ * ═══════════════════════════════════════════════════════════════
+ * 
+ * Automatically switches between light and dark themes based on
+ * system preference. Single source of truth for all design tokens.
+ */
+
+@layer base {
+  /* ═══════════════════════════════════════════════════════════════
+   * LIGHT THEME (Default)
+   * ═══════════════════════════════════════════════════════════════ */
+  :root {
+    color-scheme: light dark;
+    --background: 0 0% 100%;           /* #ffffff */
+    --foreground: 222 47% 11%;         /* #0f172a */
+    
+    --card: 210 40% 98%;               /* #f8fafc */
+    --card-foreground: 222 47% 11%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    --primary: 221 83% 53%;            /* #2563eb */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 210 40% 96%;          /* #f1f5f9 */
+    --secondary-foreground: 222 47% 11%;
+    
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;   /* #64748b */
+    
+    --accent: 221 83% 53%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 72% 51%;          /* #dc2626 */
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 142 71% 45%;            /* #16a34a */
+    --success-foreground: 0 0% 100%;
+    
+    --border: 214 32% 91%;             /* #e2e8f0 */
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    
+    --radius: 0.75rem;
+    
+    /* Chart colors - Light theme */
+    --chart-primary: 221 83% 53%;
+    --chart-secondary: 217 91% 60%;
+    --chart-water: 199 89% 48%;        /* Blue */
+    --chart-heat: 25 95% 53%;          /* Orange */
+    --chart-positive: 142 71% 45%;
+    --chart-negative: 0 72% 51%;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+   * DARK THEME - CSS Media Query (works without JS, primary method)
+   * ═══════════════════════════════════════════════════════════════ */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 240 10% 3.9%;        /* #09090b */
+      --foreground: 0 0% 98%;            /* #fafafa */
+      
+      --card: 240 6% 10%;                /* #18181b */
+      --card-foreground: 0 0% 98%;
+      
+      --popover: 240 6% 10%;
+      --popover-foreground: 0 0% 98%;
+      
+      --primary: 217 91% 60%;            /* #3b82f6 */
+      --primary-foreground: 0 0% 98%;
+      
+      --secondary: 240 5% 15%;
+      --secondary-foreground: 0 0% 98%;
+      
+      --muted: 240 5% 18%;
+      --muted-foreground: 240 5% 65%;    /* #a1a1aa */
+      
+      --accent: 217 91% 60%;
+      --accent-foreground: 0 0% 98%;
+      
+      --destructive: 0 84% 60%;          /* #ef4444 */
+      --destructive-foreground: 0 0% 98%;
+      
+      --success: 142 71% 45%;
+      --success-foreground: 0 0% 98%;
+      
+      --border: 240 5% 18%;
+      --input: 240 5% 18%;
+      --ring: 217 91% 60%;
+      
+      /* Chart colors - Dark theme */
+      --chart-primary: 217 91% 60%;
+      --chart-secondary: 221 83% 53%;
+      --chart-water: 199 89% 58%;
+      --chart-heat: 25 95% 63%;
+      --chart-positive: 142 71% 55%;
+      --chart-negative: 0 84% 60%;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+   * DARK THEME - Class-based fallback (for manual toggle if needed)
+   * ═══════════════════════════════════════════════════════════════ */
+  .dark {
+      --background: 240 10% 3.9%;        /* #09090b */
+      --foreground: 0 0% 98%;            /* #fafafa */
+      
+      --card: 240 6% 10%;                /* #18181b */
+      --card-foreground: 0 0% 98%;
+      
+      --popover: 240 6% 10%;
+      --popover-foreground: 0 0% 98%;
+      
+      --primary: 217 91% 60%;            /* #3b82f6 */
+      --primary-foreground: 0 0% 98%;
+      
+      --secondary: 240 5% 15%;
+      --secondary-foreground: 0 0% 98%;
+      
+      --muted: 240 5% 18%;
+      --muted-foreground: 240 5% 65%;    /* #a1a1aa */
+      
+      --accent: 217 91% 60%;
+      --accent-foreground: 0 0% 98%;
+      
+      --destructive: 0 84% 60%;          /* #ef4444 */
+      --destructive-foreground: 0 0% 98%;
+      
+      --success: 142 71% 45%;
+      --success-foreground: 0 0% 98%;
+      
+      --border: 240 5% 18%;
+      --input: 240 5% 18%;
+      --ring: 217 91% 60%;
+      
+      /* Chart colors - Dark theme */
+      --chart-primary: 217 91% 60%;
+      --chart-secondary: 221 83% 53%;
+      --chart-water: 199 89% 58%;
+      --chart-heat: 25 95% 63%;
+      --chart-positive: 142 71% 55%;
+      --chart-negative: 0 84% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  /* Card Shadows - Adapt to theme */
+  .card-shadow {
+    box-shadow: 
+      0 1px 3px 0 rgb(0 0 0 / 0.1),
+      0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    .card-shadow {
+      box-shadow: 
+        0 1px 3px 0 rgb(0 0 0 / 0.3),
+        0 1px 2px -1px rgb(0 0 0 / 0.2);
+    }
+  }
+  
+  .dark .card-shadow {
+    box-shadow: 
+      0 1px 3px 0 rgb(0 0 0 / 0.3),
+      0 1px 2px -1px rgb(0 0 0 / 0.2);
+  }
+  
+  .card-shadow-md {
+    box-shadow: 
+      0 4px 6px -1px rgb(0 0 0 / 0.1),
+      0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    .card-shadow-md {
+      box-shadow: 
+        0 4px 6px -1px rgb(0 0 0 / 0.4),
+        0 2px 4px -2px rgb(0 0 0 / 0.3);
+    }
+  }
+  
+  .dark .card-shadow-md {
+    box-shadow: 
+      0 4px 6px -1px rgb(0 0 0 / 0.4),
+      0 2px 4px -2px rgb(0 0 0 / 0.3);
+  }
+  
+  /* Flux Glow Effects */
+  .flux-glow {
+    box-shadow: 
+      0 4px 14px -3px hsl(var(--primary) / 0.25),
+      0 0 0 1px hsl(var(--primary) / 0.1);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    .flux-glow {
+      box-shadow: 
+        0 0 20px -5px hsl(var(--primary) / 0.3),
+        0 0 40px -10px hsl(var(--primary) / 0.2);
+    }
+  }
+  
+  .dark .flux-glow {
+    box-shadow: 
+      0 0 20px -5px hsl(var(--primary) / 0.3),
+      0 0 40px -10px hsl(var(--primary) / 0.2);
+  }
+  
+  /* Gradient Text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(221 83% 65%) 100%
+    );
+  }
+  
+  /* Stagger Animation Delays */
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+  
+  /* Balance Colors */
+  .balance-positive {
+    @apply text-success;
+  }
+  
+  .balance-negative {
+    @apply text-destructive;
+  }
+
+  /* Section Spacing Consistency */
+  .section-gap {
+    @apply mb-6;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--secondary));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Number Input - Remove Spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}

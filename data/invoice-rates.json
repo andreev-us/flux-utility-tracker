@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "source": "Invoice Document",
+    "currency": "PLN",
+    "date": "2026-01",
+    "apartmentSize": 47.02
+  },
+  "rates": {
+    "variable": {
+      "coldWater": {
+        "rate": 14.83,
+        "unit": "m³",
+        "description": "Cold water supply rate"
+      },
+      "hotWaterHeating": {
+        "rate": 35.15,
+        "unit": "m³",
+        "description": "Hot water heating component"
+      },
+      "centralHeatingVariable": {
+        "rate": 140.61,
+        "unit": "GJ",
+        "description": "Central heating variable rate"
+      }
+    },
+    "fixed": {
+      "garbage": {
+        "baseRate": 4.00,
+        "calculation": "47.02 m² × 4.00 PLN/m²",
+        "total": 188.08,
+        "description": "Garbage collection (area-based)"
+      },
+      "parking": {
+        "total": 85.10,
+        "description": "Parking space fee"
+      },
+      "administration": {
+        "items": [
+          {
+            "name": "Konserwacja wind 8%",
+            "amount": 15.67
+          },
+          {
+            "name": "Konserwacja wind 23%",
+            "amount": 5.36
+          },
+          {
+            "name": "Energia elektryczna części wspólne",
+            "amount": 47.02
+          },
+          {
+            "name": "Utrzymanie czystości",
+            "amount": 37.62
+          },
+          {
+            "name": "Konserwacja bieżąca",
+            "amount": 56.42
+          },
+          {
+            "name": "Ochrona",
+            "amount": 47.02
+          },
+          {
+            "name": "Przeglądy techniczne",
+            "amount": 9.40
+          },
+          {
+            "name": "Ubezpieczenie",
+            "amount": 4.70
+          },
+          {
+            "name": "Fundusz remontowy",
+            "amount": 94.04
+          },
+          {
+            "name": "Koszty zarządu",
+            "amount": 14.10
+          },
+          {
+            "name": "Pozostałe koszty administracyjne",
+            "amount": 1.55
+          }
+        ],
+        "total": 332.90,
+        "description": "Sum of all administration/maintenance costs"
+      }
+    }
+  },
+  "quotas": {
+    "waterMonth": {
+      "value": 4.0,
+      "unit": "m³",
+      "description": "Monthly water consumption quota"
+    },
+    "heatMonth": {
+      "value": 1.0,
+      "unit": "GJ",
+      "description": "Monthly heating consumption quota"
+    }
+  },
+  "advancePayment": {
+    "total": 841.16,
+    "description": "Total monthly advance payment"
+  },
+  "summary": {
+    "fixedCostsTotal": 606.08,
+    "breakdown": {
+      "garbage": 188.08,
+      "parking": 85.10,
+      "administration": 332.90
+    }
+  }
+}
+
+
