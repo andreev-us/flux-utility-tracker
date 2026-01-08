@@ -217,9 +217,10 @@ export function RateEditor({ className }: RateEditorProps) {
             <Input
               id="advance"
               type="number"
-              value={localAdvance}
-              onChange={(e) => setLocalAdvance(parseFloat(e.target.value) || 0)}
+              value={localAdvance || ""}
+              onChange={(e) => setLocalAdvance(e.target.value === "" ? 0 : parseFloat(e.target.value))}
               step={0.01}
+              placeholder="0"
               className="font-mono"
             />
             <p className="text-xs text-muted-foreground">
@@ -246,14 +247,15 @@ export function RateEditor({ className }: RateEditorProps) {
                   <Input
                     id={key}
                     type="number"
-                    value={localRates[key]}
+                    value={localRates[key] || ""}
                     onChange={(e) =>
                       setLocalRates((prev) => ({
                         ...prev,
-                        [key]: parseFloat(e.target.value) || 0,
+                        [key]: e.target.value === "" ? 0 : parseFloat(e.target.value),
                       }))
                     }
                     step={0.01}
+                    placeholder="0"
                     className="font-mono"
                   />
                 </div>
@@ -279,14 +281,15 @@ export function RateEditor({ className }: RateEditorProps) {
                 <Input
                   id={key}
                   type="number"
-                  value={localRates[key]}
+                  value={localRates[key] || ""}
                   onChange={(e) =>
                     setLocalRates((prev) => ({
                       ...prev,
-                      [key]: parseFloat(e.target.value) || 0,
+                      [key]: e.target.value === "" ? 0 : parseFloat(e.target.value),
                     }))
                   }
                   step={0.01}
+                  placeholder="0"
                   className="font-mono"
                 />
               </div>
@@ -309,9 +312,10 @@ export function RateEditor({ className }: RateEditorProps) {
               <Input
                 id="electricityRate"
                 type="number"
-                value={localElectricityRate}
-                onChange={(e) => setLocalElectricityRate(parseFloat(e.target.value) || 0)}
+                value={localElectricityRate || ""}
+                onChange={(e) => setLocalElectricityRate(e.target.value === "" ? 0 : parseFloat(e.target.value))}
                 step={0.01}
+                placeholder="0"
                 className="font-mono"
               />
             </div>
@@ -335,14 +339,15 @@ export function RateEditor({ className }: RateEditorProps) {
                 <Input
                   id={key}
                   type="number"
-                  value={localQuotas[key]}
+                  value={localQuotas[key] || ""}
                   onChange={(e) =>
                     setLocalQuotas((prev) => ({
                       ...prev,
-                      [key]: parseFloat(e.target.value) || 0,
+                      [key]: e.target.value === "" ? 0 : parseFloat(e.target.value),
                     }))
                   }
                   step={key === "electricityMonth" ? 1 : 0.1}
+                  placeholder="0"
                   className="font-mono"
                 />
               </div>

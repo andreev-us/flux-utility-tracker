@@ -26,6 +26,7 @@ import {
   Chrome,
   AlertCircle,
   Mail,
+  Scale,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -42,6 +43,7 @@ export default function Dashboard() {
     settings,
     projectedBill,
     liveBalance,
+    cumulativeLiveBalance,
     fixedCosts,
     currentMonthData,
   } = useSettings();
@@ -49,6 +51,7 @@ export default function Dashboard() {
   const { currency } = settings;
   const advancePayment = currentMonthData.advancePayment;
   const balanceTrend = liveBalance >= 0 ? "positive" : "negative";
+  const cumulativeBalanceTrend = cumulativeLiveBalance >= 0 ? "positive" : "negative";
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -305,7 +308,7 @@ export default function Dashboard() {
         </div>
 
         {/* KPI Cards */}
-        <div className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        <div className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
           <KPICard
             title="Projected Bill"
             value={formatCurrency(projectedBill, currency)}
@@ -321,12 +324,20 @@ export default function Dashboard() {
             delay={200}
           />
           <KPICard
-            title="Live Balance"
+            title="This Month"
             value={formatCurrency(Math.abs(liveBalance), currency)}
             subtitle={liveBalance >= 0 ? "Expected refund" : "Amount owed"}
             icon={liveBalance >= 0 ? TrendingUp : TrendingDown}
             trend={balanceTrend}
             delay={300}
+          />
+          <KPICard
+            title="Live Balance"
+            value={formatCurrency(Math.abs(cumulativeLiveBalance), currency)}
+            subtitle={cumulativeLiveBalance >= 0 ? "Total refund due" : "Total owed"}
+            icon={Scale}
+            trend={cumulativeBalanceTrend}
+            delay={350}
           />
           <KPICard
             title="Fixed Costs"

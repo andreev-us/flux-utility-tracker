@@ -43,6 +43,13 @@ export interface OverridesJson {
   electricityRate?: number;
 }
 
+export interface MeterReadingsJson {
+  coldWater: number;
+  hotWater: number;
+  heating: number;
+  electricity: number;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -59,6 +66,7 @@ export interface Database {
           month: string
           notes: string | null
           overrides: OverridesJson | null
+          meter_readings: MeterReadingsJson | null
           updated_at: string
           user_id: string
         }
@@ -74,6 +82,7 @@ export interface Database {
           month: string
           notes?: string | null
           overrides?: OverridesJson | null
+          meter_readings?: MeterReadingsJson | null
           updated_at?: string
           user_id: string
         }
@@ -89,6 +98,7 @@ export interface Database {
           month?: string
           notes?: string | null
           overrides?: OverridesJson | null
+          meter_readings?: MeterReadingsJson | null
           updated_at?: string
           user_id?: string
         }

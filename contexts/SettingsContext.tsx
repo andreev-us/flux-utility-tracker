@@ -32,6 +32,14 @@ export interface ElectricityUsage {
   kwh: number;
 }
 
+// Meter readings - absolute values from the meter
+export interface MeterReadings {
+  coldWater: number;
+  hotWater: number;
+  heating: number;
+  electricity: number;
+}
+
 export interface Quotas {
   waterMonth: number;
   heatMonth: number;
@@ -51,6 +59,7 @@ export interface MonthData {
   notes?: string;
   overrides?: MonthOverrides;
   isComplete?: boolean; // User marked as finalized
+  meterReadings?: MeterReadings; // Absolute meter values
 }
 
 export interface Settings {
@@ -102,6 +111,13 @@ const DEFAULT_USAGE: Usage = {
 
 const DEFAULT_ELECTRICITY: ElectricityUsage = {
   kwh: 0,
+};
+
+const DEFAULT_METER_READINGS: MeterReadings = {
+  coldWater: 0,
+  hotWater: 0,
+  heating: 0,
+  electricity: 0,
 };
 
 // Seeded random number generator for deterministic "random" values
@@ -219,6 +235,7 @@ interface SettingsContextType {
   resetToDefaults: () => void;
   projectedBill: number;
   liveBalance: number;
+  cumulativeLiveBalance: number; // Running total across all months
   fixedCosts: number;
   variableCosts: number;
   electricityCost: number;
@@ -236,6 +253,10 @@ interface SettingsContextType {
   addMonth: (monthKey: string) => void;
   removeMonth: (monthKey: string) => void;
   getMonthStatus: (monthKey: string) => 'empty' | 'partial' | 'complete';
+  // Meter readings
+  updateMeterReading: (key: keyof MeterReadings, value: number) => void;
+  getPreviousMonthReadings: () => MeterReadings | null;
+  getCalculatedUsage: () => { coldWater: number; hotWater: number; heating: number; electricity: number };
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -343,6 +364,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
                 rates: row.overrides.rates,
                 electricityRate: row.overrides.electricityRate,
               } : undefined,
+              meterReadings: row.meter_readings ? {
+                coldWater: row.meter_readings.coldWater,
+                hotWater: row.meter_readings.hotWater,
+                heating: row.meter_readings.heating,
+                electricity: row.meter_readings.electricity,
+              } : undefined,
             };
           });
           setMonthData(loaded);
@@ -441,6 +468,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         notes: monthDataToSave.notes || null,
         is_complete: monthDataToSave.isComplete || false,
         overrides: monthDataToSave.overrides || null,
+        meter_readings: monthDataToSave.meterReadings || null,
         updated_at: new Date().toISOString(),
       };
       
@@ -595,6 +623,77 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         advancePayment: settings.defaultAdvancePayment,
       };
       const newData = { ...currentData, advancePayment: value };
+      debouncedSaveMonthData(selectedMonth, newData);
+      return { ...prev, [selectedMonth]: newData };
+    });
+  }, [selectedMonth, settings.defaultAdvancePayment, debouncedSaveMonthData]);
+
+  // Get the previous month key
+  const getPreviousMonthKey = useCallback((currentMonth: string): string | null => {
+    const sortedMonths = Object.keys(monthData).sort();
+    const currentIndex = sortedMonths.indexOf(currentMonth);
+    if (currentIndex <= 0) return null;
+    return sortedMonths[currentIndex - 1];
+  }, [monthData]);
+
+  // Get meter readings from previous month
+  const getPreviousMonthReadings = useCallback((): MeterReadings | null => {
+    const prevMonthKey = getPreviousMonthKey(selectedMonth);
+    if (!prevMonthKey) return null;
+    const prevData = monthData[prevMonthKey];
+    return prevData?.meterReadings || null;
+  }, [selectedMonth, monthData, getPreviousMonthKey]);
+
+  // Calculate usage from meter readings (current - previous)
+  const getCalculatedUsage = useCallback(() => {
+    const current = currentMonthData.meterReadings || DEFAULT_METER_READINGS;
+    const previous = getPreviousMonthReadings() || DEFAULT_METER_READINGS;
+    
+    return {
+      coldWater: Math.max(0, current.coldWater - previous.coldWater),
+      hotWater: Math.max(0, current.hotWater - previous.hotWater),
+      heating: Math.max(0, current.heating - previous.heating),
+      electricity: Math.max(0, current.electricity - previous.electricity),
+    };
+  }, [currentMonthData.meterReadings, getPreviousMonthReadings]);
+
+  // Update meter reading and auto-calculate usage
+  const updateMeterReading = useCallback((key: keyof MeterReadings, value: number) => {
+    setMonthData((prev) => {
+      const currentData = prev[selectedMonth] || {
+        usage: DEFAULT_USAGE,
+        electricity: DEFAULT_ELECTRICITY,
+        advancePayment: settings.defaultAdvancePayment,
+      };
+      
+      const newMeterReadings = {
+        ...DEFAULT_METER_READINGS,
+        ...currentData.meterReadings,
+        [key]: Math.max(0, value),
+      };
+      
+      // Get previous month readings for usage calculation
+      const sortedMonths = Object.keys(prev).sort();
+      const currentIndex = sortedMonths.indexOf(selectedMonth);
+      const prevMonthKey = currentIndex > 0 ? sortedMonths[currentIndex - 1] : null;
+      const prevReadings = prevMonthKey ? prev[prevMonthKey]?.meterReadings || DEFAULT_METER_READINGS : DEFAULT_METER_READINGS;
+      
+      // Calculate usage based on the difference
+      const calculatedUsage = {
+        coldWater: Math.max(0, newMeterReadings.coldWater - prevReadings.coldWater),
+        hotWater: Math.max(0, newMeterReadings.hotWater - prevReadings.hotWater),
+        heating: Math.max(0, newMeterReadings.heating - prevReadings.heating),
+      };
+      
+      const calculatedElectricity = Math.max(0, newMeterReadings.electricity - prevReadings.electricity);
+      
+      const newData = {
+        ...currentData,
+        meterReadings: newMeterReadings,
+        usage: calculatedUsage,
+        electricity: { kwh: calculatedElectricity },
+      };
+      
       debouncedSaveMonthData(selectedMonth, newData);
       return { ...prev, [selectedMonth]: newData };
     });
@@ -824,6 +923,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     [currentMonthData.electricity, settings.electricityRates]
   );
 
+  // Cumulative live balance across ALL months
+  const cumulativeLiveBalance = useMemo(() => {
+    let total = 0;
+    Object.values(monthData).forEach((data) => {
+      const variable =
+        data.usage.coldWater * settings.rates.coldWater +
+        data.usage.hotWater * settings.rates.hotWaterHeating +
+        data.usage.heating * settings.rates.centralHeatingVariable;
+      const monthProjected = fixedCosts + variable;
+      const monthBalance = data.advancePayment - monthProjected;
+      total += monthBalance;
+    });
+    return total;
+  }, [monthData, settings.rates, fixedCosts]);
+
   const getTrendData = useCallback((monthsBack: number): TrendDataPoint[] => {
     const sortedMonths = availableMonths.slice().reverse();
     const selectedIndex = sortedMonths.findIndex(m => m === selectedMonth);
@@ -885,6 +999,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         resetToDefaults,
         projectedBill,
         liveBalance,
+        cumulativeLiveBalance,
         fixedCosts,
         variableCosts,
         electricityCost,
@@ -902,6 +1017,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         addMonth,
         removeMonth,
         getMonthStatus,
+        // Meter readings
+        updateMeterReading,
+        getPreviousMonthReadings,
+        getCalculatedUsage,
       }}
     >
       {children}
