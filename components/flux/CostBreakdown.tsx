@@ -50,21 +50,21 @@ export function CostBreakdown({ className }: CostBreakdownProps) {
       amount: rates.adminFixed, 
       icon: Building2, 
       iconColor: "text-muted-foreground",
-      type: "fixed" 
+      type: "fixed" as const
     },
     { 
       label: "Garbage Collection", 
       amount: rates.garbageFixed, 
       icon: Trash2, 
       iconColor: "text-muted-foreground",
-      type: "fixed" 
+      type: "fixed" as const
     },
     { 
       label: "Parking Space", 
       amount: rates.parkingFixed, 
       icon: Car, 
       iconColor: "text-muted-foreground",
-      type: "fixed" 
+      type: "fixed" as const
     },
     // Variable Costs
     { 
@@ -72,21 +72,21 @@ export function CostBreakdown({ className }: CostBreakdownProps) {
       amount: coldWaterCost, 
       icon: Droplets, 
       iconColor: "text-muted-foreground",
-      type: "variable" 
+      type: "variable" as const
     },
     { 
       label: "Hot Water", 
       amount: hotWaterCost, 
       icon: Waves, 
       iconColor: "text-muted-foreground",
-      type: "variable" 
+      type: "variable" as const
     },
     { 
       label: "Central Heating", 
       amount: heatingCost, 
       icon: Flame, 
       iconColor: "text-muted-foreground",
-      type: "variable" 
+      type: "variable" as const
     },
   ].sort((a, b) => b.amount - a.amount);
 
