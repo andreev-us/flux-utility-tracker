@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,9 +53,11 @@ export function UserMenu() {
           className="h-9 gap-2 px-2 border bg-card card-shadow transition-all hover:border-primary/50 hover:bg-primary/5"
         >
           {user.user_metadata?.avatar_url ? (
-            <img
+            <Image
               src={user.user_metadata.avatar_url}
               alt="Avatar"
+              width={20}
+              height={20}
               className="h-5 w-5 rounded-full"
             />
           ) : (
