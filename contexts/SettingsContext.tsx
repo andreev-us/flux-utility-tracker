@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "./AuthContext";
+import type { Settings as DBSettings, MonthDataRow } from "@/lib/supabase/database.types";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES - Invoice Data Model
@@ -284,7 +285,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           .from('settings')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .single() as { data: DBSettings | null; error: typeof settingsError };
         
         console.log('[Load] Settings result:', { settingsData, settingsError });
         
@@ -308,7 +309,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         const { data: monthDataRows, error: monthError } = await supabase
           .from('month_data')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id) as { data: MonthDataRow[] | null; error: typeof monthError };
         
         console.log('[Load] Month data result:', { monthDataRows, monthError });
         
