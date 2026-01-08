@@ -281,11 +281,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       
       try {
         // Load settings
-        const { data: settingsData, error: settingsError } = await supabase
+        const settingsResult = await supabase
           .from('settings')
           .select('*')
           .eq('user_id', user.id)
-          .single() as { data: DBSettings | null; error: typeof settingsError };
+          .single();
+        
+        const settingsData = settingsResult.data as DBSettings | null;
+        const settingsError = settingsResult.error;
         
         console.log('[Load] Settings result:', { settingsData, settingsError });
         
@@ -306,10 +309,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         }
         
         // Load month data
-        const { data: monthDataRows, error: monthError } = await supabase
+        const monthResult = await supabase
           .from('month_data')
           .select('*')
-          .eq('user_id', user.id) as { data: MonthDataRow[] | null; error: typeof monthError };
+          .eq('user_id', user.id);
+        
+        const monthDataRows = monthResult.data as MonthDataRow[] | null;
+        const monthError = monthResult.error;
         
         console.log('[Load] Month data result:', { monthDataRows, monthError });
         
