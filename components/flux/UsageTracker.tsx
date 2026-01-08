@@ -140,11 +140,11 @@ export function UsageTracker({ className }: UsageTrackerProps) {
         bgColor="bg-blue-500/10"
         progressColor="bg-blue-500"
         value={usage.coldWater}
-        maxValue={effectiveQuotas.waterMonth * 2}
+        maxValue={effectiveQuotas.coldWaterMonth * 2}
         unit="m³"
         cost={usage.coldWater * effectiveRates.coldWater}
         currency={settings.currency}
-        quota={effectiveQuotas.waterMonth}
+        quota={effectiveQuotas.coldWaterMonth}
         onChange={handleColdWaterChange}
       />
 
@@ -155,11 +155,11 @@ export function UsageTracker({ className }: UsageTrackerProps) {
         bgColor="bg-orange-500/10"
         progressColor="bg-orange-500"
         value={usage.hotWater}
-        maxValue={effectiveQuotas.waterMonth * 2}
+        maxValue={effectiveQuotas.hotWaterMonth * 2}
         unit="m³"
         cost={usage.hotWater * effectiveRates.hotWaterHeating}
         currency={settings.currency}
-        quota={effectiveQuotas.waterMonth}
+        quota={effectiveQuotas.hotWaterMonth}
         onChange={handleHotWaterChange}
       />
 
