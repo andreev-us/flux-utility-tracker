@@ -20,9 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useSettings, type Rates, type Quotas } from "@/contexts/SettingsContext";
+import { useSettings, type Rates, type Quotas, type MeterReadings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Settings, RotateCcw, Save, Zap, User } from "lucide-react";
+import { Settings, RotateCcw, Save, Zap, User, Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RateEditorProps {
@@ -39,9 +39,17 @@ const RATE_LABELS: Record<keyof Rates, { label: string; unit: string }> = {
 };
 
 const QUOTA_LABELS: Record<keyof Quotas, { label: string; unit: string }> = {
-  waterMonth: { label: "Water Allowance", unit: "m³/month" },
+  coldWaterMonth: { label: "Cold Water Allowance", unit: "m³/month" },
+  hotWaterMonth: { label: "Hot Water Allowance", unit: "m³/month" },
   heatMonth: { label: "Heat Allowance", unit: "GJ/month" },
   electricityMonth: { label: "Electricity Estimate", unit: "kWh/month" },
+};
+
+const METER_LABELS: Record<keyof MeterReadings, { label: string; unit: string }> = {
+  coldWater: { label: "Cold Water", unit: "m³" },
+  hotWater: { label: "Hot Water", unit: "m³" },
+  heating: { label: "Heating", unit: "GJ" },
+  electricity: { label: "Electricity", unit: "kWh" },
 };
 
 export function RateEditor({ className }: RateEditorProps) {
@@ -53,6 +61,7 @@ export function RateEditor({ className }: RateEditorProps) {
     updateElectricityRate,
     updateQuota,
     updateAdvancePayment,
+    updateStartingMeterReading,
     resetToDefaults,
   } = useSettings();
 
@@ -63,6 +72,7 @@ export function RateEditor({ className }: RateEditorProps) {
   const [localQuotas, setLocalQuotas] = useState(settings.quotas);
   const [localAdvance, setLocalAdvance] = useState(currentMonthData.advancePayment);
   const [localElectricityRate, setLocalElectricityRate] = useState(settings.electricityRates.perKwh);
+  const [localStartingReadings, setLocalStartingReadings] = useState(settings.startingMeterReadings);
   const [localCurrency, setLocalCurrency] = useState(
     settings.currency === "zł" ? "PLN" : settings.currency === "€" ? "EUR" : "USD"
   );
@@ -78,6 +88,7 @@ export function RateEditor({ className }: RateEditorProps) {
       setLocalQuotas(settings.quotas);
       setLocalAdvance(currentMonthData.advancePayment);
       setLocalElectricityRate(settings.electricityRates.perKwh);
+      setLocalStartingReadings(settings.startingMeterReadings);
       setLocalCurrency(
         settings.currency === "zł" ? "PLN" : settings.currency === "€" ? "EUR" : "USD"
       );
@@ -109,6 +120,10 @@ export function RateEditor({ className }: RateEditorProps) {
     });
     updateAdvancePayment(localAdvance);
     updateElectricityRate(localElectricityRate);
+    // Save starting meter readings
+    Object.entries(localStartingReadings).forEach(([key, value]) => {
+      updateStartingMeterReading(key as keyof MeterReadings, value);
+    });
     setOpen(false);
   };
 
@@ -122,9 +137,10 @@ export function RateEditor({ className }: RateEditorProps) {
       parkingFixed: 0,
       adminFixed: 0,
     });
-    setLocalQuotas({ waterMonth: 0, heatMonth: 0, electricityMonth: 0 });
+    setLocalQuotas({ coldWaterMonth: 0, hotWaterMonth: 0, heatMonth: 0, electricityMonth: 0 });
     setLocalAdvance(0);
     setLocalElectricityRate(0);
+    setLocalStartingReadings({ coldWater: 0, hotWater: 0, heating: 0, electricity: 0 });
     setLocalCurrency("PLN");
   };
 
@@ -347,6 +363,43 @@ export function RateEditor({ className }: RateEditorProps) {
                     }))
                   }
                   step={key === "electricityMonth" ? 1 : 0.1}
+                  placeholder="0"
+                  className="font-mono"
+                />
+              </div>
+            ))}
+          </div>
+
+          <Separator />
+
+          {/* Starting Meter Readings */}
+          <div className="space-y-4">
+            <h4 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Gauge className="h-4 w-4" />
+              Starting Meter Readings
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              Initial meter values for calculating usage in your first month
+            </p>
+            {(Object.keys(METER_LABELS) as Array<keyof MeterReadings>).map((key) => (
+              <div key={key} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor={`start-${key}`}>{METER_LABELS[key].label}</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {METER_LABELS[key].unit}
+                  </span>
+                </div>
+                <Input
+                  id={`start-${key}`}
+                  type="number"
+                  value={localStartingReadings[key] || ""}
+                  onChange={(e) =>
+                    setLocalStartingReadings((prev) => ({
+                      ...prev,
+                      [key]: e.target.value === "" ? 0 : parseFloat(e.target.value),
+                    }))
+                  }
+                  step={key === "electricity" ? 1 : 0.01}
                   placeholder="0"
                   className="font-mono"
                 />

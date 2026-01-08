@@ -41,7 +41,8 @@ export interface MeterReadings {
 }
 
 export interface Quotas {
-  waterMonth: number;
+  coldWaterMonth: number;
+  hotWaterMonth: number;
   heatMonth: number;
   electricityMonth: number;
 }
@@ -69,6 +70,7 @@ export interface Settings {
   electricityRates: ElectricityRates;
   quotas: Quotas;
   defaultAdvancePayment: number;
+  startingMeterReadings: MeterReadings; // Initial meter values for first month
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -89,18 +91,10 @@ const DEFAULT_ELECTRICITY_RATES: ElectricityRates = {
 };
 
 const DEFAULT_QUOTAS: Quotas = {
-  waterMonth: 4.0,
+  coldWaterMonth: 4.0,
+  hotWaterMonth: 4.0,
   heatMonth: 1.0,
   electricityMonth: 150,
-};
-
-const DEFAULT_SETTINGS: Settings = {
-  currency: "zł",
-  currencyLocale: "pl-PL",
-  rates: DEFAULT_RATES,
-  electricityRates: DEFAULT_ELECTRICITY_RATES,
-  quotas: DEFAULT_QUOTAS,
-  defaultAdvancePayment: 841.16,
 };
 
 const DEFAULT_USAGE: Usage = {
@@ -118,6 +112,16 @@ const DEFAULT_METER_READINGS: MeterReadings = {
   hotWater: 0,
   heating: 0,
   electricity: 0,
+};
+
+const DEFAULT_SETTINGS: Settings = {
+  currency: "zł",
+  currencyLocale: "pl-PL",
+  rates: DEFAULT_RATES,
+  electricityRates: DEFAULT_ELECTRICITY_RATES,
+  quotas: DEFAULT_QUOTAS,
+  defaultAdvancePayment: 841.16,
+  startingMeterReadings: DEFAULT_METER_READINGS,
 };
 
 // Seeded random number generator for deterministic "random" values
@@ -255,8 +259,10 @@ interface SettingsContextType {
   getMonthStatus: (monthKey: string) => 'empty' | 'partial' | 'complete';
   // Meter readings
   updateMeterReading: (key: keyof MeterReadings, value: number) => void;
-  getPreviousMonthReadings: () => MeterReadings | null;
+  getPreviousMonthReadings: () => MeterReadings;
   getCalculatedUsage: () => { coldWater: number; hotWater: number; heating: number; electricity: number };
+  // Starting meter readings
+  updateStartingMeterReading: (key: keyof MeterReadings, value: number) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -286,12 +292,62 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthKey());
 
   // ═══════════════════════════════════════════════════════════════
-  // LOAD DATA FROM SUPABASE
+  // LOAD DATA FROM SUPABASE + REAL-TIME SUBSCRIPTIONS
   // ═══════════════════════════════════════════════════════════════
+  
+  // Helper to parse settings from DB
+  const parseSettings = useCallback((settingsData: DBSettings): Settings => {
+    // Handle legacy quota format (waterMonth -> coldWaterMonth/hotWaterMonth)
+    const quotas = settingsData.quotas as any;
+    return {
+      currency: settingsData.currency,
+      currencyLocale: settingsData.currency_locale,
+      rates: settingsData.rates,
+      electricityRates: settingsData.electricity_rates,
+      quotas: {
+        coldWaterMonth: quotas.coldWaterMonth ?? quotas.waterMonth ?? 4.0,
+        hotWaterMonth: quotas.hotWaterMonth ?? quotas.waterMonth ?? 4.0,
+        heatMonth: quotas.heatMonth ?? 1.0,
+        electricityMonth: quotas.electricityMonth ?? 150,
+      },
+      defaultAdvancePayment: settingsData.default_advance_payment,
+      startingMeterReadings: (settingsData as any).starting_meter_readings || DEFAULT_METER_READINGS,
+    };
+  }, []);
+  
+  // Helper to parse month data from DB
+  const parseMonthData = useCallback((row: MonthDataRow): MonthData => {
+    return {
+      usage: {
+        coldWater: row.cold_water,
+        hotWater: row.hot_water,
+        heating: row.heating,
+      },
+      electricity: {
+        kwh: row.electricity_kwh,
+      },
+      advancePayment: row.advance_payment,
+      notes: row.notes || undefined,
+      isComplete: row.is_complete || false,
+      overrides: row.overrides ? {
+        quotas: row.overrides.quotas,
+        rates: row.overrides.rates,
+        electricityRate: row.overrides.electricityRate,
+      } : undefined,
+      meterReadings: row.meter_readings ? {
+        coldWater: row.meter_readings.coldWater,
+        hotWater: row.meter_readings.hotWater,
+        heating: row.meter_readings.heating,
+        electricity: row.meter_readings.electricity,
+      } : undefined,
+    };
+  }, []);
   
   useEffect(() => {
     if (!user) {
       console.log('[Load] No user, using sample data');
+      setMonthData(generateSampleData());
+      setSettings(DEFAULT_SETTINGS);
       setLoading(false);
       return;
     }
@@ -314,19 +370,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         console.log('[Load] Settings result:', { settingsData, settingsError });
         
         if (settingsError && settingsError.code !== 'PGRST116') {
-          // PGRST116 = no rows returned (which is OK for new users)
           console.error('[Load] Settings error:', settingsError);
         }
         
         if (settingsData) {
-          setSettings({
-            currency: settingsData.currency,
-            currencyLocale: settingsData.currency_locale,
-            rates: settingsData.rates,
-            electricityRates: settingsData.electricity_rates,
-            quotas: settingsData.quotas,
-            defaultAdvancePayment: settingsData.default_advance_payment,
-          });
+          setSettings(parseSettings(settingsData));
+        } else {
+          // New user - use defaults (not sample data)
+          setSettings(DEFAULT_SETTINGS);
         }
         
         // Load month data
@@ -347,35 +398,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         if (monthDataRows && monthDataRows.length > 0) {
           const loaded: Record<string, MonthData> = {};
           monthDataRows.forEach((row) => {
-            loaded[row.month] = {
-              usage: {
-                coldWater: row.cold_water,
-                hotWater: row.hot_water,
-                heating: row.heating,
-              },
-              electricity: {
-                kwh: row.electricity_kwh,
-              },
-              advancePayment: row.advance_payment,
-              notes: row.notes || undefined,
-              isComplete: row.is_complete || false,
-              overrides: row.overrides ? {
-                quotas: row.overrides.quotas,
-                rates: row.overrides.rates,
-                electricityRate: row.overrides.electricityRate,
-              } : undefined,
-              meterReadings: row.meter_readings ? {
-                coldWater: row.meter_readings.coldWater,
-                hotWater: row.meter_readings.hotWater,
-                heating: row.meter_readings.heating,
-                electricity: row.meter_readings.electricity,
-              } : undefined,
-            };
+            loaded[row.month] = parseMonthData(row);
           });
           setMonthData(loaded);
           console.log('[Load] Loaded month data:', loaded);
         } else {
-          console.log('[Load] No month data found, using sample data');
+          // New user - start with empty data, not sample data
+          setMonthData({});
+          console.log('[Load] No month data found, starting fresh');
         }
       } catch (error) {
         console.error('[Load] Error loading data:', error);
@@ -385,7 +415,63 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadData();
-  }, [user, supabase]);
+    
+    // Set up real-time subscriptions
+    const settingsChannel = supabase
+      .channel('settings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'settings',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[Realtime] Settings change:', payload);
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const newData = payload.new as DBSettings;
+            setSettings(parseSettings(newData));
+          }
+        }
+      )
+      .subscribe();
+    
+    const monthDataChannel = supabase
+      .channel('month-data-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'month_data',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[Realtime] Month data change:', payload);
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const row = payload.new as MonthDataRow;
+            setMonthData((prev) => ({
+              ...prev,
+              [row.month]: parseMonthData(row),
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            const row = payload.old as MonthDataRow;
+            setMonthData((prev) => {
+              const { [row.month]: removed, ...rest } = prev;
+              return rest;
+            });
+          }
+        }
+      )
+      .subscribe();
+    
+    // Cleanup subscriptions on unmount
+    return () => {
+      supabase.removeChannel(settingsChannel);
+      supabase.removeChannel(monthDataChannel);
+    };
+  }, [user, supabase, parseSettings, parseMonthData]);
 
   // ═══════════════════════════════════════════════════════════════
   // SAVE SETTINGS TO SUPABASE (debounced)
@@ -409,6 +495,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         electricity_rates: newSettings.electricityRates,
         quotas: newSettings.quotas,
         default_advance_payment: newSettings.defaultAdvancePayment,
+        starting_meter_readings: newSettings.startingMeterReadings,
         updated_at: new Date().toISOString(),
       };
       
@@ -636,18 +723,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return sortedMonths[currentIndex - 1];
   }, [monthData]);
 
-  // Get meter readings from previous month
-  const getPreviousMonthReadings = useCallback((): MeterReadings | null => {
+  // Get meter readings from previous month (or starting readings if first month)
+  const getPreviousMonthReadings = useCallback((): MeterReadings => {
     const prevMonthKey = getPreviousMonthKey(selectedMonth);
-    if (!prevMonthKey) return null;
+    if (!prevMonthKey) {
+      // First month - use starting meter readings from settings
+      return settings.startingMeterReadings;
+    }
     const prevData = monthData[prevMonthKey];
-    return prevData?.meterReadings || null;
-  }, [selectedMonth, monthData, getPreviousMonthKey]);
+    return prevData?.meterReadings || settings.startingMeterReadings;
+  }, [selectedMonth, monthData, getPreviousMonthKey, settings.startingMeterReadings]);
 
   // Calculate usage from meter readings (current - previous)
   const getCalculatedUsage = useCallback(() => {
     const current = currentMonthData.meterReadings || DEFAULT_METER_READINGS;
-    const previous = getPreviousMonthReadings() || DEFAULT_METER_READINGS;
+    const previous = getPreviousMonthReadings();
     
     return {
       coldWater: Math.max(0, current.coldWater - previous.coldWater),
@@ -672,11 +762,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         [key]: Math.max(0, value),
       };
       
-      // Get previous month readings for usage calculation
+      // Get previous month readings for usage calculation (use starting readings if no prev month)
       const sortedMonths = Object.keys(prev).sort();
       const currentIndex = sortedMonths.indexOf(selectedMonth);
       const prevMonthKey = currentIndex > 0 ? sortedMonths[currentIndex - 1] : null;
-      const prevReadings = prevMonthKey ? prev[prevMonthKey]?.meterReadings || DEFAULT_METER_READINGS : DEFAULT_METER_READINGS;
+      const prevReadings = prevMonthKey 
+        ? prev[prevMonthKey]?.meterReadings || settings.startingMeterReadings 
+        : settings.startingMeterReadings;
       
       // Calculate usage based on the difference
       const calculatedUsage = {
@@ -697,7 +789,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       debouncedSaveMonthData(selectedMonth, newData);
       return { ...prev, [selectedMonth]: newData };
     });
-  }, [selectedMonth, settings.defaultAdvancePayment, debouncedSaveMonthData]);
+  }, [selectedMonth, settings.defaultAdvancePayment, settings.startingMeterReadings, debouncedSaveMonthData]);
+
+  const updateStartingMeterReading = useCallback((key: keyof MeterReadings, value: number) => {
+    setSettings((prev) => {
+      const newSettings = {
+        ...prev,
+        startingMeterReadings: {
+          ...prev.startingMeterReadings,
+          [key]: Math.max(0, value),
+        },
+      };
+      debouncedSaveSettings(newSettings);
+      return newSettings;
+    });
+  }, [debouncedSaveSettings]);
 
   const resetToDefaults = useCallback(() => {
     const zeroSettings: Settings = {
@@ -712,8 +818,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         adminFixed: 0,
       },
       electricityRates: { perKwh: 0 },
-      quotas: { waterMonth: 0, heatMonth: 0, electricityMonth: 0 },
+      quotas: { coldWaterMonth: 0, hotWaterMonth: 0, heatMonth: 0, electricityMonth: 0 },
       defaultAdvancePayment: 0,
+      startingMeterReadings: DEFAULT_METER_READINGS,
     };
     setSettings(zeroSettings);
     debouncedSaveSettings(zeroSettings);
@@ -824,9 +931,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, [selectedMonth, settings.defaultAdvancePayment, debouncedSaveMonthData]);
 
   const getEffectiveQuotas = useCallback((): Quotas => {
-    const overrides = currentMonthData.overrides?.quotas || {};
+    const overrides = currentMonthData.overrides?.quotas || {} as any;
     return {
-      waterMonth: overrides.waterMonth ?? settings.quotas.waterMonth,
+      coldWaterMonth: overrides.coldWaterMonth ?? overrides.waterMonth ?? settings.quotas.coldWaterMonth,
+      hotWaterMonth: overrides.hotWaterMonth ?? overrides.waterMonth ?? settings.quotas.hotWaterMonth,
       heatMonth: overrides.heatMonth ?? settings.quotas.heatMonth,
       electricityMonth: overrides.electricityMonth ?? settings.quotas.electricityMonth,
     };
@@ -1021,6 +1129,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         updateMeterReading,
         getPreviousMonthReadings,
         getCalculatedUsage,
+        // Starting meter readings
+        updateStartingMeterReading,
       }}
     >
       {children}

@@ -21,7 +21,9 @@ export interface ElectricityRatesJson {
 }
 
 export interface QuotasJson {
-  waterMonth: number;
+  coldWaterMonth?: number;
+  hotWaterMonth?: number;
+  waterMonth?: number; // Legacy - for backwards compatibility
   heatMonth: number;
   electricityMonth: number;
 }
@@ -114,6 +116,7 @@ export interface Database {
           id: string
           quotas: QuotasJson
           rates: RatesJson
+          starting_meter_readings: MeterReadingsJson | null
           updated_at: string
           user_id: string
         }
@@ -126,6 +129,7 @@ export interface Database {
           id?: string
           quotas: QuotasJson
           rates: RatesJson
+          starting_meter_readings?: MeterReadingsJson | null
           updated_at?: string
           user_id: string
         }
@@ -138,6 +142,7 @@ export interface Database {
           id?: string
           quotas?: QuotasJson
           rates?: RatesJson
+          starting_meter_readings?: MeterReadingsJson | null
           updated_at?: string
           user_id?: string
         }

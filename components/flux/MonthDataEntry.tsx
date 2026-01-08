@@ -126,12 +126,7 @@ export function MonthDataEntry({ className }: MonthDataEntryProps) {
     electricity: 0,
   };
   
-  const previousReadings = getPreviousMonthReadings() || {
-    coldWater: 0,
-    hotWater: 0,
-    heating: 0,
-    electricity: 0,
-  };
+  const previousReadings = getPreviousMonthReadings();
   
   const calculatedUsage = getCalculatedUsage();
 
