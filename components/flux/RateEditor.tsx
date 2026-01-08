@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,64 @@ import { useSettings, type Rates, type Quotas, type MeterReadings } from "@/cont
 import { useAuth } from "@/contexts/AuthContext";
 import { Settings, RotateCcw, Save, Zap, User, Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Type for string-based rates/quotas/readings (used for form inputs)
+type StringRates = Record<keyof Rates, string>;
+type StringQuotas = Record<keyof Quotas, string>;
+type StringMeterReadings = Record<keyof MeterReadings, string>;
+
+// Convert numbers to string representation for editing
+const toStringRates = (rates: Rates): StringRates => ({
+  coldWater: String(rates.coldWater),
+  hotWaterHeating: String(rates.hotWaterHeating),
+  centralHeatingVariable: String(rates.centralHeatingVariable),
+  garbageFixed: String(rates.garbageFixed),
+  parkingFixed: String(rates.parkingFixed),
+  adminFixed: String(rates.adminFixed),
+});
+
+const toStringQuotas = (quotas: Quotas): StringQuotas => ({
+  coldWaterMonth: String(quotas.coldWaterMonth),
+  hotWaterMonth: String(quotas.hotWaterMonth),
+  heatMonth: String(quotas.heatMonth),
+  electricityMonth: String(quotas.electricityMonth),
+});
+
+const toStringReadings = (readings: MeterReadings): StringMeterReadings => ({
+  coldWater: String(readings.coldWater),
+  hotWater: String(readings.hotWater),
+  heating: String(readings.heating),
+  electricity: String(readings.electricity),
+});
+
+// Convert string values back to numbers for saving
+const toNumberRates = (rates: StringRates): Rates => ({
+  coldWater: parseFloat(rates.coldWater) || 0,
+  hotWaterHeating: parseFloat(rates.hotWaterHeating) || 0,
+  centralHeatingVariable: parseFloat(rates.centralHeatingVariable) || 0,
+  garbageFixed: parseFloat(rates.garbageFixed) || 0,
+  parkingFixed: parseFloat(rates.parkingFixed) || 0,
+  adminFixed: parseFloat(rates.adminFixed) || 0,
+});
+
+const toNumberQuotas = (quotas: StringQuotas): Quotas => ({
+  coldWaterMonth: parseFloat(quotas.coldWaterMonth) || 0,
+  hotWaterMonth: parseFloat(quotas.hotWaterMonth) || 0,
+  heatMonth: parseFloat(quotas.heatMonth) || 0,
+  electricityMonth: parseFloat(quotas.electricityMonth) || 0,
+});
+
+const toNumberReadings = (readings: StringMeterReadings): MeterReadings => ({
+  coldWater: parseFloat(readings.coldWater) || 0,
+  hotWater: parseFloat(readings.hotWater) || 0,
+  heating: parseFloat(readings.heating) || 0,
+  electricity: parseFloat(readings.electricity) || 0,
+});
+
+// Validate input to only allow valid decimal number patterns
+const isValidDecimalInput = (value: string): boolean => {
+  return value === "" || /^-?\d*\.?\d*$/.test(value);
+};
 
 interface RateEditorProps {
   className?: string;
@@ -56,23 +114,19 @@ export function RateEditor({ className }: RateEditorProps) {
   const {
     settings,
     currentMonthData,
-    updateCurrency,
-    updateRate,
-    updateElectricityRate,
-    updateQuota,
-    updateAdvancePayment,
-    updateStartingMeterReading,
+    updateAllSettings,
     resetToDefaults,
   } = useSettings();
 
   const { user, updateProfile } = useAuth();
 
   const [open, setOpen] = useState(false);
-  const [localRates, setLocalRates] = useState(settings.rates);
-  const [localQuotas, setLocalQuotas] = useState(settings.quotas);
-  const [localAdvance, setLocalAdvance] = useState(currentMonthData.advancePayment);
-  const [localElectricityRate, setLocalElectricityRate] = useState(settings.electricityRates.perKwh);
-  const [localStartingReadings, setLocalStartingReadings] = useState(settings.startingMeterReadings);
+  // Use string state for inputs to preserve intermediate typing states like "0." or "12."
+  const [localRates, setLocalRates] = useState<StringRates>(() => toStringRates(settings.rates));
+  const [localQuotas, setLocalQuotas] = useState<StringQuotas>(() => toStringQuotas(settings.quotas));
+  const [localAdvance, setLocalAdvance] = useState(String(currentMonthData.advancePayment));
+  const [localElectricityRate, setLocalElectricityRate] = useState(String(settings.electricityRates.perKwh));
+  const [localStartingReadings, setLocalStartingReadings] = useState<StringMeterReadings>(() => toStringReadings(settings.startingMeterReadings));
   const [localCurrency, setLocalCurrency] = useState(
     settings.currency === "zł" ? "PLN" : settings.currency === "€" ? "EUR" : "USD"
   );
@@ -84,11 +138,12 @@ export function RateEditor({ className }: RateEditorProps) {
 
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen) {
-      setLocalRates(settings.rates);
-      setLocalQuotas(settings.quotas);
-      setLocalAdvance(currentMonthData.advancePayment);
-      setLocalElectricityRate(settings.electricityRates.perKwh);
-      setLocalStartingReadings(settings.startingMeterReadings);
+      // Initialize with string values when opening
+      setLocalRates(toStringRates(settings.rates));
+      setLocalQuotas(toStringQuotas(settings.quotas));
+      setLocalAdvance(String(currentMonthData.advancePayment));
+      setLocalElectricityRate(String(settings.electricityRates.perKwh));
+      setLocalStartingReadings(toStringReadings(settings.startingMeterReadings));
       setLocalCurrency(
         settings.currency === "zł" ? "PLN" : settings.currency === "€" ? "EUR" : "USD"
       );
@@ -111,36 +166,33 @@ export function RateEditor({ className }: RateEditorProps) {
       setProfileLoading(false);
     }
 
-    updateCurrency(localCurrency);
-    Object.entries(localRates).forEach(([key, value]) => {
-      updateRate(key as keyof Rates, value);
+    // Convert string values to numbers and batch update all settings
+    updateAllSettings({
+      currency: localCurrency,
+      rates: toNumberRates(localRates),
+      electricityRate: parseFloat(localElectricityRate) || 0,
+      quotas: toNumberQuotas(localQuotas),
+      advancePayment: parseFloat(localAdvance) || 0,
+      startingMeterReadings: toNumberReadings(localStartingReadings),
     });
-    Object.entries(localQuotas).forEach(([key, value]) => {
-      updateQuota(key as keyof Quotas, value);
-    });
-    updateAdvancePayment(localAdvance);
-    updateElectricityRate(localElectricityRate);
-    // Save starting meter readings
-    Object.entries(localStartingReadings).forEach(([key, value]) => {
-      updateStartingMeterReading(key as keyof MeterReadings, value);
-    });
+    
     setOpen(false);
   };
 
   const handleReset = () => {
     resetToDefaults();
     setLocalRates({
-      coldWater: 0,
-      hotWaterHeating: 0,
-      centralHeatingVariable: 0,
-      garbageFixed: 0,
-      parkingFixed: 0,
-      adminFixed: 0,
+      coldWater: "0",
+      hotWaterHeating: "0",
+      centralHeatingVariable: "0",
+      garbageFixed: "0",
+      parkingFixed: "0",
+      adminFixed: "0",
     });
-    setLocalQuotas({ coldWaterMonth: 0, hotWaterMonth: 0, heatMonth: 0, electricityMonth: 0 });
-    setLocalAdvance(0);
-    setLocalElectricityRate(0);
-    setLocalStartingReadings({ coldWater: 0, hotWater: 0, heating: 0, electricity: 0 });
+    setLocalQuotas({ coldWaterMonth: "0", hotWaterMonth: "0", heatMonth: "0", electricityMonth: "0" });
+    setLocalAdvance("0");
+    setLocalElectricityRate("0");
+    setLocalStartingReadings({ coldWater: "0", hotWater: "0", heating: "0", electricity: "0" });
     setLocalCurrency("PLN");
   };
 
@@ -232,10 +284,14 @@ export function RateEditor({ className }: RateEditorProps) {
             <Label htmlFor="advance">Monthly Advance Payment</Label>
             <Input
               id="advance"
-              type="number"
-              value={localAdvance || ""}
-              onChange={(e) => setLocalAdvance(e.target.value === "" ? 0 : parseFloat(e.target.value))}
-              step={0.01}
+              type="text"
+              inputMode="decimal"
+              value={localAdvance}
+              onChange={(e) => {
+                if (isValidDecimalInput(e.target.value)) {
+                  setLocalAdvance(e.target.value);
+                }
+              }}
               placeholder="0"
               className="font-mono"
             />
@@ -262,15 +318,14 @@ export function RateEditor({ className }: RateEditorProps) {
                   </div>
                   <Input
                     id={key}
-                    type="number"
-                    value={localRates[key] || ""}
-                    onChange={(e) =>
-                      setLocalRates((prev) => ({
-                        ...prev,
-                        [key]: e.target.value === "" ? 0 : parseFloat(e.target.value),
-                      }))
-                    }
-                    step={0.01}
+                    type="text"
+                    inputMode="decimal"
+                    value={localRates[key]}
+                    onChange={(e) => {
+                      if (isValidDecimalInput(e.target.value)) {
+                        setLocalRates((prev) => ({ ...prev, [key]: e.target.value }));
+                      }
+                    }}
                     placeholder="0"
                     className="font-mono"
                   />
@@ -296,15 +351,14 @@ export function RateEditor({ className }: RateEditorProps) {
                 </div>
                 <Input
                   id={key}
-                  type="number"
-                  value={localRates[key] || ""}
-                  onChange={(e) =>
-                    setLocalRates((prev) => ({
-                      ...prev,
-                      [key]: e.target.value === "" ? 0 : parseFloat(e.target.value),
-                    }))
-                  }
-                  step={0.01}
+                  type="text"
+                  inputMode="decimal"
+                  value={localRates[key]}
+                  onChange={(e) => {
+                    if (isValidDecimalInput(e.target.value)) {
+                      setLocalRates((prev) => ({ ...prev, [key]: e.target.value }));
+                    }
+                  }}
                   placeholder="0"
                   className="font-mono"
                 />
@@ -327,10 +381,14 @@ export function RateEditor({ className }: RateEditorProps) {
               </div>
               <Input
                 id="electricityRate"
-                type="number"
-                value={localElectricityRate || ""}
-                onChange={(e) => setLocalElectricityRate(e.target.value === "" ? 0 : parseFloat(e.target.value))}
-                step={0.01}
+                type="text"
+                inputMode="decimal"
+                value={localElectricityRate}
+                onChange={(e) => {
+                  if (isValidDecimalInput(e.target.value)) {
+                    setLocalElectricityRate(e.target.value);
+                  }
+                }}
                 placeholder="0"
                 className="font-mono"
               />
@@ -354,15 +412,14 @@ export function RateEditor({ className }: RateEditorProps) {
                 </div>
                 <Input
                   id={key}
-                  type="number"
-                  value={localQuotas[key] || ""}
-                  onChange={(e) =>
-                    setLocalQuotas((prev) => ({
-                      ...prev,
-                      [key]: e.target.value === "" ? 0 : parseFloat(e.target.value),
-                    }))
-                  }
-                  step={key === "electricityMonth" ? 1 : 0.1}
+                  type="text"
+                  inputMode="decimal"
+                  value={localQuotas[key]}
+                  onChange={(e) => {
+                    if (isValidDecimalInput(e.target.value)) {
+                      setLocalQuotas((prev) => ({ ...prev, [key]: e.target.value }));
+                    }
+                  }}
                   placeholder="0"
                   className="font-mono"
                 />
@@ -391,15 +448,14 @@ export function RateEditor({ className }: RateEditorProps) {
                 </div>
                 <Input
                   id={`start-${key}`}
-                  type="number"
-                  value={localStartingReadings[key] || ""}
-                  onChange={(e) =>
-                    setLocalStartingReadings((prev) => ({
-                      ...prev,
-                      [key]: e.target.value === "" ? 0 : parseFloat(e.target.value),
-                    }))
-                  }
-                  step={key === "electricity" ? 1 : 0.01}
+                  type="text"
+                  inputMode="decimal"
+                  value={localStartingReadings[key]}
+                  onChange={(e) => {
+                    if (isValidDecimalInput(e.target.value)) {
+                      setLocalStartingReadings((prev) => ({ ...prev, [key]: e.target.value }));
+                    }
+                  }}
                   placeholder="0"
                   className="font-mono"
                 />

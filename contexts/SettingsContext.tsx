@@ -237,6 +237,15 @@ interface SettingsContextType {
   updateQuota: (key: keyof Quotas, value: number) => void;
   updateAdvancePayment: (value: number) => void;
   resetToDefaults: () => void;
+  // Batch update for all settings at once
+  updateAllSettings: (updates: {
+    currency?: string;
+    rates?: Rates;
+    electricityRate?: number;
+    quotas?: Quotas;
+    advancePayment?: number;
+    startingMeterReadings?: MeterReadings;
+  }) => void;
   projectedBill: number;
   liveBalance: number;
   cumulativeLiveBalance: number; // Running total across all months
@@ -826,6 +835,48 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     debouncedSaveSettings(zeroSettings);
   }, [debouncedSaveSettings]);
 
+  // Batch update all settings at once - prevents multiple re-renders
+  const updateAllSettings = useCallback((updates: {
+    currency?: string;
+    rates?: Rates;
+    electricityRate?: number;
+    quotas?: Quotas;
+    advancePayment?: number;
+    startingMeterReadings?: MeterReadings;
+  }) => {
+    setSettings((prev) => {
+      const config = updates.currency ? CURRENCY_CONFIG[updates.currency] || CURRENCY_CONFIG.PLN : null;
+      
+      const newSettings: Settings = {
+        ...prev,
+        ...(config && { currency: config.symbol, currencyLocale: config.locale }),
+        ...(updates.rates && { rates: updates.rates }),
+        ...(updates.electricityRate !== undefined && { electricityRates: { perKwh: updates.electricityRate } }),
+        ...(updates.quotas && { quotas: updates.quotas }),
+        ...(updates.startingMeterReadings && { startingMeterReadings: updates.startingMeterReadings }),
+      };
+      
+      // Save immediately without debounce for batch updates
+      saveSettings(newSettings);
+      
+      return newSettings;
+    });
+    
+    // Update advance payment for current month if provided
+    if (updates.advancePayment !== undefined) {
+      setMonthData((prev) => {
+        const currentData = prev[selectedMonth] || {
+          usage: DEFAULT_USAGE,
+          electricity: DEFAULT_ELECTRICITY,
+          advancePayment: settings.defaultAdvancePayment,
+        };
+        const newData = { ...currentData, advancePayment: updates.advancePayment! };
+        saveMonthData(selectedMonth, newData);
+        return { ...prev, [selectedMonth]: newData };
+      });
+    }
+  }, [saveSettings, saveMonthData, selectedMonth, settings.defaultAdvancePayment]);
+
   // ═══════════════════════════════════════════════════════════════
   // PER-MONTH OVERRIDE FUNCTIONS
   // ═══════════════════════════════════════════════════════════════
@@ -1105,6 +1156,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         updateQuota,
         updateAdvancePayment,
         resetToDefaults,
+        updateAllSettings,
         projectedBill,
         liveBalance,
         cumulativeLiveBalance,

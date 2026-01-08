@@ -6,7 +6,7 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Flux | Utility Bill Tracker",
+  title: "Flux",
   description: "Track your monthly utility consumption and forecast your bill in real-time.",
   colorScheme: "light dark",
 };

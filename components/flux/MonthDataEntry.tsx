@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -12,8 +13,80 @@ import {
   Wallet,
 } from "lucide-react";
 
+// Validate input to only allow valid decimal number patterns
+const isValidDecimalInput = (value: string): boolean => {
+  return value === "" || /^-?\d*\.?\d*$/.test(value);
+};
+
+// Custom hook for numeric input with string state for smooth typing
+function useNumericInput(value: number, onChange: (value: number) => void) {
+  const [inputValue, setInputValue] = useState(String(value));
+  
+  // Sync with external value when it changes (but not during active editing)
+  useEffect(() => {
+    // Only update if the parsed values are different (to preserve typing state like "0.")
+    const currentParsed = parseFloat(inputValue) || 0;
+    if (currentParsed !== value) {
+      setInputValue(String(value));
+    }
+  }, [value]); // intentionally exclude inputValue to avoid loops
+  
+  const handleChange = useCallback((newValue: string) => {
+    if (isValidDecimalInput(newValue)) {
+      setInputValue(newValue);
+      // Only update the actual value if we have a valid number
+      const parsed = parseFloat(newValue);
+      if (!isNaN(parsed)) {
+        onChange(parsed);
+      } else if (newValue === "" || newValue === "-") {
+        onChange(0);
+      }
+    }
+  }, [onChange]);
+  
+  return { inputValue, handleChange };
+}
+
 interface MonthDataEntryProps {
   className?: string;
+}
+
+// Separate component for advance payment to use the hook
+function AdvancePaymentInput({ 
+  value, 
+  onChange, 
+  currency 
+}: { 
+  value: number; 
+  onChange: (value: number) => void; 
+  currency: string;
+}) {
+  const { inputValue, handleChange } = useNumericInput(value, onChange);
+  
+  return (
+    <div className="mt-4 flex items-center justify-between rounded-lg border bg-card p-3">
+      <div className="flex items-center gap-2">
+        <div className="rounded-lg bg-primary/10 p-1.5">
+          <Wallet className="h-4 w-4 text-primary" />
+        </div>
+        <div>
+          <p className="font-medium text-xs sm:text-sm">Advance Payment</p>
+          <p className="text-[10px] text-muted-foreground hidden sm:block">Monthly prepayment</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <Input
+          type="text"
+          inputMode="decimal"
+          value={inputValue}
+          onChange={(e) => handleChange(e.target.value)}
+          placeholder="0.00"
+          className="h-8 w-24 sm:w-28 text-sm font-bold tabular-nums text-right px-2"
+        />
+        <span className="text-sm font-medium text-muted-foreground">{currency}</span>
+      </div>
+    </div>
+  );
 }
 
 interface MeterReadingCardProps {
@@ -46,6 +119,7 @@ function MeterReadingCard({
   step = 0.01,
 }: MeterReadingCardProps) {
   const cost = usage * rate;
+  const { inputValue, handleChange } = useNumericInput(currentReading, onReadingChange);
 
   return (
     <div className="group relative overflow-hidden rounded-lg border bg-card p-3 sm:p-4 transition-all hover:border-primary/30 hover:shadow-md">
@@ -74,11 +148,10 @@ function MeterReadingCard({
         <div className="flex items-center gap-2">
           <label className="text-[10px] text-muted-foreground w-16 shrink-0">Reading:</label>
           <Input
-            type="number"
-            value={currentReading || ""}
-            onChange={(e) => onReadingChange(e.target.value === "" ? 0 : parseFloat(e.target.value))}
-            step={step}
-            min={0}
+            type="text"
+            inputMode="decimal"
+            value={inputValue}
+            onChange={(e) => handleChange(e.target.value)}
             placeholder="0.00"
             className="h-7 font-mono text-sm tabular-nums"
           />
@@ -205,28 +278,11 @@ export function MonthDataEntry({ className }: MonthDataEntryProps) {
         </div>
 
         {/* Advance Payment - Compact inline */}
-        <div className="mt-4 flex items-center justify-between rounded-lg border bg-card p-3">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-primary/10 p-1.5">
-              <Wallet className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="font-medium text-xs sm:text-sm">Advance Payment</p>
-              <p className="text-[10px] text-muted-foreground hidden sm:block">Monthly prepayment</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Input
-              type="number"
-              value={currentMonthData.advancePayment || ""}
-              onChange={(e) => updateAdvancePayment(e.target.value === "" ? 0 : parseFloat(e.target.value))}
-              step={0.01}
-              placeholder="0.00"
-              className="h-8 w-24 sm:w-28 text-sm font-bold tabular-nums text-right px-2"
-            />
-            <span className="text-sm font-medium text-muted-foreground">{settings.currency}</span>
-          </div>
-        </div>
+        <AdvancePaymentInput
+          value={currentMonthData.advancePayment}
+          onChange={updateAdvancePayment}
+          currency={settings.currency}
+        />
       </CardContent>
     </Card>
   );
